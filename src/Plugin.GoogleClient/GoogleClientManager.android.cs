@@ -1,53 +1,53 @@
 using System;
-using System.Threading.Tasks;
 using System.Linq;
+using System.Threading.Tasks;
 using Android.App;
 using Android.Content;
 using Android.Gms.Auth.Api.SignIn;
 using Android.Gms.Common;
 using Android.Gms.Common.Apis;
-using Plugin.GoogleClient.Shared;
 using Android.Gms.Tasks;
 using Java.Interop;
-using Android.Gms.Auth;
+using Plugin.GoogleClient.Shared;
+using Object = Java.Lang.Object;
+using Task = Android.Gms.Tasks.Task;
 
 namespace Plugin.GoogleClient
 {
     /// <summary>
     /// Implementation for GoogleClient
     /// </summary>
-    public class GoogleClientManager : Java.Lang.Object, IGoogleClientManager, IOnCompleteListener
+    public class GoogleClientManager : Object, IGoogleClientManager, IOnCompleteListener
     {
         // Class Debug Tag
-        static string Tag = typeof(GoogleClientManager).FullName;
-        static int AuthActivityID = 9637;
+        private static string _tag = typeof(GoogleClientManager).FullName;
+        private static int _authActivityId = 9637;
         public static Activity CurrentActivity { get; set; }
-        static TaskCompletionSource<GoogleResponse<GoogleUser>> _loginTcs;
+        static System.Threading.Tasks.TaskCompletionSource<GoogleResponse<GoogleUser>> _loginTcs;
         static string _serverClientId;
         static string _clientId;
-        static string[] _initScopes = new string[0];
+        static string[] _initScopes = Array.Empty<string>();
 
-       GoogleSignInClient mGoogleSignInClient;
+        private GoogleSignInClient _mGoogleSignInClient;
 
         public GoogleUser CurrentUser
         {
             get
             {
                 GoogleSignInAccount userAccount = GoogleSignIn.GetLastSignedInAccount(CurrentActivity);
-                return userAccount !=null ?new GoogleUser
+                return userAccount != null ? new GoogleUser
                 {
                     Id = userAccount.Id,
                     Name = userAccount.DisplayName,
                     GivenName = userAccount.GivenName,
                     FamilyName = userAccount.FamilyName,
                     Email = userAccount.Email,
-                    Picture = new Uri((userAccount.PhotoUrl != null ? $"{userAccount.PhotoUrl}" : $"https://autisticdating.net/imgs/profile-placeholder.jpg"))
-                }: null; 
+                    Picture = new Uri((userAccount.PhotoUrl != null ? $"{userAccount.PhotoUrl}" : "https://autisticdating.net/imgs/profile-placeholder.jpg"))
+                } : null;
             }
         }
 
-        static readonly string[] DefaultScopes = new []
-        {
+        public static readonly string[] DefaultScopes = {
             Scopes.Profile
         };
 
@@ -61,26 +61,26 @@ namespace Plugin.GoogleClient
 
             var gopBuilder = new GoogleSignInOptions.Builder(GoogleSignInOptions.DefaultSignIn)
                     .RequestEmail();
-            
-			if(!string.IsNullOrWhiteSpace(_serverClientId))
+
+            if (!string.IsNullOrWhiteSpace(_serverClientId))
             {
-				gopBuilder.RequestServerAuthCode(_serverClientId, false);
+                gopBuilder.RequestServerAuthCode(_serverClientId, false);
             }
 
-			if(!string.IsNullOrWhiteSpace(_clientId))
+            if (!string.IsNullOrWhiteSpace(_clientId))
             {
                 gopBuilder.RequestIdToken(_clientId);
             }
-            
+
             foreach (var s in _initScopes)
             {
                 gopBuilder.RequestScopes(new Scope(s));
             }
 
-            GoogleSignInOptions googleSignInOptions = gopBuilder.Build();
+            var googleSignInOptions = gopBuilder.Build();
 
             // Build a GoogleSignInClient with the options specified by gso.
-            mGoogleSignInClient = GoogleSignIn.GetClient(CurrentActivity, googleSignInOptions);
+            _mGoogleSignInClient = GoogleSignIn.GetClient(CurrentActivity, googleSignInOptions);
         }
 
         public static void Initialize(
@@ -93,8 +93,8 @@ namespace Plugin.GoogleClient
             CurrentActivity = activity;
             _serverClientId = serverClientId;
             _clientId = clientId;
-            _initScopes = DefaultScopes.Concat(scopes ?? new string[0]).ToArray();
-            AuthActivityID = requestCode;
+            _initScopes = DefaultScopes.Concat(scopes ?? Array.Empty<string>()).ToArray();
+            _authActivityId = requestCode;
         }
 
         EventHandler<GoogleClientResultEventArgs<GoogleUser>> _onLogin;
@@ -106,7 +106,7 @@ namespace Plugin.GoogleClient
 
         public async Task<GoogleResponse<GoogleUser>> LoginAsync()
         {
-            if (CurrentActivity == null || mGoogleSignInClient == null)
+            if (CurrentActivity == null || _mGoogleSignInClient == null)
             {
                 throw new GoogleClientNotInitializedErrorException(GoogleClientBaseException.ClientNotInitializedErrorMessage);
             }
@@ -115,15 +115,15 @@ namespace Plugin.GoogleClient
 
             GoogleSignInAccount account = GoogleSignIn.GetLastSignedInAccount(CurrentActivity);
 
- 
-            if (account!=null)
+
+            if (account != null)
             {
                 OnSignInSuccessful(account);
             }
             else
             {
-                Intent intent = mGoogleSignInClient.SignInIntent;
-                CurrentActivity?.StartActivityForResult(intent, AuthActivityID);
+                Intent intent = _mGoogleSignInClient.SignInIntent;
+                CurrentActivity?.StartActivityForResult(intent, _authActivityId);
             }
 
             return await _loginTcs.Task;
@@ -132,14 +132,14 @@ namespace Plugin.GoogleClient
         public async Task<GoogleResponse<GoogleUser>> SilentLoginAsync()
         {
 
-            if (CurrentActivity == null || mGoogleSignInClient == null)
+            if (CurrentActivity == null || _mGoogleSignInClient == null)
             {
                 throw new GoogleClientNotInitializedErrorException(GoogleClientBaseException.ClientNotInitializedErrorMessage);
             }
 
             _loginTcs = new TaskCompletionSource<GoogleResponse<GoogleUser>>();
 
-            GoogleSignInAccount account = GoogleSignIn.GetLastSignedInAccount(CurrentActivity);
+            var account = GoogleSignIn.GetLastSignedInAccount(CurrentActivity);
 
             if (account != null)
             {
@@ -147,7 +147,7 @@ namespace Plugin.GoogleClient
             }
             else
             {
-                GoogleSignInAccount userAccount = await mGoogleSignInClient.SilentSignInAsync();
+                var userAccount = await _mGoogleSignInClient.SilentSignInAsync();
                 OnSignInSuccessful(userAccount);
             }
 
@@ -165,25 +165,16 @@ namespace Plugin.GoogleClient
 
         public void Logout()
         {
-            if (CurrentActivity == null || mGoogleSignInClient == null)
+            if (CurrentActivity == null || _mGoogleSignInClient == null)
             {
                 throw new GoogleClientNotInitializedErrorException(GoogleClientBaseException.ClientNotInitializedErrorMessage);
             }
 
-            if (GoogleSignIn.GetLastSignedInAccount(CurrentActivity)!=null)
-            {
-                //Auth.GoogleSignInApi.SignOut(GoogleApiClient);
-                _idToken = null;
-                _accessToken = null;
-                mGoogleSignInClient.SignOut();
-                //GoogleApiClient.Disconnect();
-
-                // Log the state of the client
-                //Debug.WriteLine(Tag + ": The user has logged out succesfully? " + !GoogleApiClient.IsConnected);
-
-                // Send the logout result to the receivers
-                OnLogoutCompleted(EventArgs.Empty);
-            }
+            if (GoogleSignIn.GetLastSignedInAccount(CurrentActivity) == null) return;
+            _idToken = null;
+            _accessToken = null;
+            _mGoogleSignInClient.SignOut();
+            OnLogoutCompleted(EventArgs.Empty);
         }
 
         public bool IsLoggedIn
@@ -214,59 +205,42 @@ namespace Plugin.GoogleClient
 
         public static void OnAuthCompleted(int requestCode, Result resultCode, Intent data)
         {
-            if (requestCode != AuthActivityID)
+            if (requestCode != _authActivityId)
             {
                 return;
             }
             GoogleSignIn.GetSignedInAccountFromIntent(data).AddOnCompleteListener(CrossGoogleClient.Current as IOnCompleteListener);
-      
+
         }
 
-        async void OnSignInSuccessful(GoogleSignInAccount userAccount)
+        void OnSignInSuccessful(GoogleSignInAccount userAccount)
         {
-            GoogleUser googleUser = new GoogleUser
+            try
             {
-                Id = userAccount.Id,
-                Name = userAccount.DisplayName,
-                GivenName = userAccount.GivenName,
-                FamilyName = userAccount.FamilyName,
-                Email = userAccount.Email,
-                Picture = new Uri((userAccount.PhotoUrl != null ? $"{userAccount.PhotoUrl}" : $"https://autisticdating.net/imgs/profile-placeholder.jpg"))
-            };
+                GoogleUser googleUser = new GoogleUser
+                {
+                    Id = userAccount.Id,
+                    Name = userAccount.DisplayName,
+                    GivenName = userAccount.GivenName,
+                    FamilyName = userAccount.FamilyName,
+                    Email = userAccount.Email,
+                    Picture = new Uri((userAccount.PhotoUrl != null
+                        ? $"{userAccount.PhotoUrl}"
+                        : "https://autisticdating.net/imgs/profile-placeholder.jpg"))
+                };
 
-            _idToken = userAccount.IdToken;
-            System.Console.WriteLine($"Id Token: {_idToken}");
+                _idToken = userAccount.IdToken;
+                var googleArgs = new GoogleClientResultEventArgs<GoogleUser>(googleUser, GoogleActionStatus.Completed);
 
-
-            if (userAccount.GrantedScopes != null &&  userAccount.GrantedScopes.Count>0)
-            {
-                     var scopes = $"oauth2:{string.Join(' ', userAccount.GrantedScopes.Select(s => s.ScopeUri).ToArray())}";
-                     System.Console.WriteLine($"Scopes: {scopes}");	
-		     var tcs = new TaskCompletionSource<string>();
-		     System.Threading.Tasks.Task.Run(() => 
-		     {
-		        try	
-                        {	
-                            tcs.TrySetResult(GoogleAuthUtil.GetToken(Application.Context, userAccount.Account, scopes));	
-                        }	
-                        catch (Exception ex)	
-                        {
-			    tcs.TrySetResult(string.Empty);
-                            System.Console.WriteLine($"Ex: {ex}");	
-                        }
-		     });
-		     
-                    _accessToken = await tcs.Task;
-		    
-		    System.Console.WriteLine($"Access Token: {_accessToken}");
+                if (_onLogin == null || _loginTcs == null || googleArgs.Data == null) return;
+                // Send the result to the receivers
+                _onLogin?.Invoke(CrossGoogleClient.Current, googleArgs);
+                _loginTcs.TrySetResult(new GoogleResponse<GoogleUser>(googleArgs));
             }
+            catch (Exception e)
+            {
 
-            var googleArgs =
-                new GoogleClientResultEventArgs<GoogleUser>(googleUser, GoogleActionStatus.Completed);
-
-            // Send the result to the receivers
-            _onLogin?.Invoke(CrossGoogleClient.Current, googleArgs);
-            _loginTcs.TrySetResult(new GoogleResponse<GoogleUser>(googleArgs));
+            }
         }
 
         void OnSignInFailed(ApiException apiException)
@@ -315,8 +289,8 @@ namespace Plugin.GoogleClient
                     errorEventArgs.Error = GoogleClientErrorType.SignInDefaultError;
                     errorEventArgs.Message = apiException.Message;
                     exception = new GoogleClientBaseException(
-                        string.IsNullOrEmpty(apiException.Message) 
-                            ? GoogleClientBaseException.SignInDefaultErrorMessage 
+                        string.IsNullOrEmpty(apiException.Message)
+                            ? GoogleClientBaseException.SignInDefaultErrorMessage
                             : apiException.Message
                         );
                     break;
@@ -326,10 +300,9 @@ namespace Plugin.GoogleClient
             _loginTcs.TrySetException(exception);
         }
 
-
-        public void OnComplete(Android.Gms.Tasks.Task task)
+        public void OnComplete(Task task)
         {
-            if(!task.IsSuccessful)
+            if (!task.IsSuccessful)
             {
                 //Failed
                 OnSignInFailed(task.Exception.JavaCast<ApiException>());
@@ -339,9 +312,9 @@ namespace Plugin.GoogleClient
                 var userAccount = task.Result.JavaCast<GoogleSignInAccount>();
 
                 OnSignInSuccessful(userAccount);
-               
+
             }
-       
+
 
         }
     }

@@ -46,8 +46,6 @@ namespace GoogleClientSample.ViewModels
             LogoutCommand = new Command(Logout);
            
             _googleClientManager = CrossGoogleClient.Current;
-            
-
             IsLoggedIn = false;
         }
 
@@ -101,9 +99,6 @@ namespace GoogleClientSample.ViewModels
                 // Log the current User email
                 Debug.WriteLine(User.Email);
                 IsLoggedIn = true;
-
-				var token = CrossGoogleClient.Current.ActiveToken;
-				Token = token;
             }
             else
             {

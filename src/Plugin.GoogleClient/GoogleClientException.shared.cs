@@ -16,8 +16,6 @@ namespace Plugin.GoogleClient.Shared
         public const string SignInRequiredErrorMessage = "The client attempted to connect to the service but the user is not signed in.";
         public const string SignInFailedErrorMessage = "The sign in attempt didn't succeed with the current account.";
         public const string ClientNotInitializedErrorMessage = "The Google Plugin is not initialized correctly.";
-
-
         public GoogleClientBaseException() : base(SignInDefaultErrorMessage) { }
 		public GoogleClientBaseException(string message) : base(message) { }
         public GoogleClientBaseException(string message, System.Exception inner) : base(message, inner) { }

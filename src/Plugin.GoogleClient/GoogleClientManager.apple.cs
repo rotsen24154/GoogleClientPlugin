@@ -33,7 +33,7 @@ namespace Plugin.GoogleClient
                     SignIn.SharedInstance.RestorePreviousSignIn();
 
                 var user = SignIn.SharedInstance.CurrentUser;
-                return user!=null? new GoogleUser
+                return user != null ? new GoogleUser
                 {
                     Id = user.UserId,
                     Name = user.Profile.Name,
@@ -43,17 +43,11 @@ namespace Plugin.GoogleClient
                     Picture = user.Profile.HasImage
                         ? new Uri(user.Profile.GetImageUrl(500).ToString())
                         : new Uri(string.Empty)
-                }: null;
+                } : null;
             }
         }
 
-        public bool IsLoggedIn
-        {
-            get
-            {
-                return SignIn.SharedInstance.HasPreviousSignIn;
-            }
-        }
+        public bool IsLoggedIn => SignIn.SharedInstance.HasPreviousSignIn;
 
         /*
         public DateTime TokenExpirationDate { get { return _tokenExpirationDate; } }
@@ -61,13 +55,13 @@ namespace Plugin.GoogleClient
         */
         static TaskCompletionSource<GoogleResponse<GoogleUser>> _loginTcs;
 
-		public static void Initialize(
+        public static void Initialize(
             string clientId = null,
             params string[] scopes
         )
         {
             SignIn.SharedInstance.Delegate = CrossGoogleClient.Current as ISignInDelegate;
-            if (scopes != null && scopes.Length > 0)
+            if (scopes is { Length: > 0 })
             {
 
                 var currentScopes = SignIn.SharedInstance.Scopes;
@@ -76,14 +70,12 @@ namespace Plugin.GoogleClient
                     .Distinct()
                     .ToArray();
 
-
                 SignIn.SharedInstance.Scopes = initScopes;
             }
 
             SignIn.SharedInstance.ClientId = string.IsNullOrWhiteSpace(clientId)
                 ? GetClientIdFromGoogleServiceDictionary()
                 : clientId;
-            //SignIn.SharedInstance.ShouldFetchBasicProfile = true;
         }
 
         static string GetClientIdFromGoogleServiceDictionary()
@@ -99,7 +91,7 @@ namespace Plugin.GoogleClient
             add => _onLogin += value;
             remove => _onLogin -= value;
         }
-        
+
         EventHandler _onLogout;
         public event EventHandler OnLogout
         {
@@ -110,7 +102,7 @@ namespace Plugin.GoogleClient
         public void Login()
         {
             UpdatePresentedViewController();
-           
+
             SignIn.SharedInstance.SignInUser();
         }
 
@@ -127,7 +119,7 @@ namespace Plugin.GoogleClient
             UpdatePresentedViewController();
             if (CurrentUser == null)
             {
-               
+
                 SignIn.SharedInstance.SignInUser();
             }
             else
@@ -138,25 +130,15 @@ namespace Plugin.GoogleClient
                     {
                         _accessToken = authentication.AccessToken;
                         _idToken = authentication.IdToken;
-                        System.Console.WriteLine($"Id Token: {_idToken}");
-                        System.Console.WriteLine($"Access Token: {_accessToken}");
                     }
 
                 });
 
-
-                /* DateTime newDate = TimeZone.CurrentTimeZone.ToLocalTime(
-                     new DateTime(2001, 1, 1, 0, 0, 0));
-                 _tokenExpirationDate = newDate.AddSeconds(user.Authentication.AccessTokenExpirationDate.SecondsSinceReferenceDate);
-                 */
                 var googleArgs = new GoogleClientResultEventArgs<GoogleUser>(
                     CurrentUser,
                     GoogleActionStatus.Completed,
                     "the user is authenticated correctly"
                 );
-
-                // Log the result of the authentication
-                Debug.WriteLine(Tag + ": Authentication " + GoogleActionStatus.Completed);
 
                 // Send the result to the receivers
                 _onLogin?.Invoke(this, googleArgs);
@@ -182,7 +164,7 @@ namespace Plugin.GoogleClient
             var currentUser = SignIn.SharedInstance.CurrentUser;
             var isSuccessful = currentUser != null;
 
-            if(isSuccessful)
+            if (isSuccessful)
             {
                 OnSignInSuccessful(currentUser);
             }
@@ -198,7 +180,7 @@ namespace Plugin.GoogleClient
             return await _loginTcs.Task;
         }
 
-	public static bool OnOpenUrl(UIApplication app, NSUrl url, NSDictionary options)
+        public static bool OnOpenUrl(UIApplication app, NSUrl url, NSDictionary options)
         {
             var openUrlOptions = new UIApplicationOpenUrlOptions(options);
             return SignIn.SharedInstance.HandleUrl(url);
@@ -240,7 +222,7 @@ namespace Plugin.GoogleClient
         }
 
 
-	public void DidSignIn(SignIn signIn, Google.SignIn.GoogleUser user, NSError error)
+        public void DidSignIn(SignIn signIn, Google.SignIn.GoogleUser user, NSError error)
         {
             var isSuccessful = user != null && error == null;
 
@@ -257,9 +239,9 @@ namespace Plugin.GoogleClient
                 case -1:
                     errorEventArgs.Error = GoogleClientErrorType.SignInUnknownError;
                     errorEventArgs.Message = GoogleClientBaseException.SignInUnknownErrorMessage;
-                    exception=new GoogleClientSignInUnknownErrorException();
+                    exception = new GoogleClientSignInUnknownErrorException();
                     break;
-                case -2: 
+                case -2:
                     errorEventArgs.Error = GoogleClientErrorType.SignInKeychainError;
                     errorEventArgs.Message = GoogleClientBaseException.SignInKeychainErrorMessage;
                     exception = new GoogleClientSignInKeychainErrorException();
@@ -286,10 +268,10 @@ namespace Plugin.GoogleClient
                     break;
             }
 
-            _onError?.Invoke(this,errorEventArgs);
+            _onError?.Invoke(this, errorEventArgs);
             _loginTcs.TrySetException(exception);
         }
-        
+
         [Export("signIn:didDisconnectWithUser:withError:")]
         public void DidDisconnect(SignIn signIn, Google.SignIn.GoogleUser user, NSError error)
         {
@@ -313,47 +295,39 @@ namespace Plugin.GoogleClient
         void OnSignInSuccessful(Google.SignIn.GoogleUser user)
         {
             GoogleUser googleUser = new GoogleUser
-                {
-                    Id = user.UserId,
-                    Name = user.Profile.Name,
-                    GivenName = user.Profile.GivenName,
-                    FamilyName = user.Profile.FamilyName,
-                    Email = user.Profile.Email,
-                    Picture = user.Profile.HasImage
+            {
+                Id = user.UserId,
+                Name = user.Profile.Name,
+                GivenName = user.Profile.GivenName,
+                FamilyName = user.Profile.FamilyName,
+                Email = user.Profile.Email,
+                Picture = user.Profile.HasImage
                         ? new Uri(user.Profile.GetImageUrl(500).ToString())
                         : new Uri(string.Empty)
-                };
+            };
 
-                 user.Authentication.GetTokens(async (Authentication authentication, NSError error) =>
-                {
-                    if(error ==null)
-                    {
-                        _accessToken = authentication.AccessToken;
-                        _idToken = authentication.IdToken;
-                        System.Console.WriteLine($"Id Token: {_idToken}");
-                        System.Console.WriteLine($"Access Token: {_accessToken}");
-                    }
-             
-                });
+            user.Authentication.GetTokens(async (Authentication authentication, NSError error) =>
+           {
+               if (error == null)
+               {
+                   _accessToken = authentication.AccessToken;
+                   _idToken = authentication.IdToken;
+                   System.Console.WriteLine($"Id Token: {_idToken}");
+                   System.Console.WriteLine($"Access Token: {_accessToken}");
+               }
 
-             
-                /* DateTime newDate = TimeZone.CurrentTimeZone.ToLocalTime(
-                     new DateTime(2001, 1, 1, 0, 0, 0));
-                 _tokenExpirationDate = newDate.AddSeconds(user.Authentication.AccessTokenExpirationDate.SecondsSinceReferenceDate);
-                 */
-                var googleArgs = new GoogleClientResultEventArgs<GoogleUser>(
-                    googleUser, 
-                    GoogleActionStatus.Completed, 
-                    "the user is authenticated correctly"
-                );
+           });
 
-                // Log the result of the authentication
-                Debug.WriteLine(Tag + ": Authentication " + GoogleActionStatus.Completed);
+            var googleArgs = new GoogleClientResultEventArgs<GoogleUser>(
+                googleUser,
+                GoogleActionStatus.Completed,
+                "the user is authenticated correctly"
+            );
 
-                // Send the result to the receivers
-                _onLogin?.Invoke(this, googleArgs);
-                _loginTcs.TrySetResult(new GoogleResponse<GoogleUser>(googleArgs));
-                
+            // Send the result to the receivers
+            _onLogin?.Invoke(this, googleArgs);
+            _loginTcs.TrySetResult(new GoogleResponse<GoogleUser>(googleArgs));
+
         }
     }
 }

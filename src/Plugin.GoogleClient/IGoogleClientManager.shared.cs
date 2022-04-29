@@ -81,10 +81,8 @@ namespace Plugin.GoogleClient
         Task<GoogleResponse<GoogleUser>> SilentLoginAsync();
         void Logout();
         string IdToken { get; }
-        string AccessToken { get; }
         GoogleUser CurrentUser { get; }
         bool IsLoggedIn { get; }
-        //DateTime TokenExpirationDate { get; }
     }
     
 }
